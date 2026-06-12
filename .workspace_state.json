@@ -1,0 +1,26 @@
+{
+  "workspace": "D:\\reasonix-workspace",
+  "docs": {
+    "99-全局控制台.md": {
+      "title": "99-全局控制台",
+      "path": "D:\\reasonix-workspace\\99-全局控制台.md"
+    },
+    "92-工作区架构与命名规则.md": {
+      "title": "92-工作区架构与命名规则",
+      "path": "D:\\reasonix-workspace\\92-工作区架构与命名规则.md"
+    },
+    "93-新项目创建SOP.md": {
+      "title": "93-新项目创建SOP",
+      "path": "D:\\reasonix-workspace\\93-新项目创建SOP.md"
+    },
+    "91-全局复利与踩坑日志.md": {
+      "title": "91-全局复利与踩坑日志",
+      "path": "D:\\reasonix-workspace\\91-全局复利与踩坑日志.md"
+    },
+    "AGENTS.md": {
+      "title": "Reasonix 新项目启动前检查规则",
+      "path": "D:\\reasonix-workspace\\AGENTS.md"
+    }
+  },
+  "projects": []
+}
