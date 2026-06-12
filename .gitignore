@@ -1,0 +1,21 @@
+# Reasonix Workspace
+
+__pycache__/
+*.pyc
+*.bak
+.tokens.json
+D:\reasonix-workspace_temp\
+D:\reasonix-workspace_deliverables\
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# OS
+Thumbs.db
+.DS_Store
+
+# Temp screenshots
+reasonix-workspace_temp/
