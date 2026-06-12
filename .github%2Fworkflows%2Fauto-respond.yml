@@ -1,0 +1,114 @@
+# GitHub Agent — Issue/PR 自动回复工作流
+# 新 Issue 或 PR 创建时自动 AI 回复
+
+name: Auto Responder
+
+on:
+  issues:
+    types: [opened]
+  pull_request:
+    types: [opened]
+  workflow_dispatch:
+
+jobs:
+  auto-respond:
+    runs-on: ubuntu-latest
+    permissions:
+      issues: write
+      pull-requests: write
+
+    steps:
+      - name: 设置 Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 20
+
+      - name: 安装依赖
+        run: npm install axios
+
+      - name: AI 自动回复
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          DEEPSEEK_API_KEY: ${{ secrets.DEEPSEEK_API_KEY || '' }}
+        run: |
+          if [ -z "$DEEPSEEK_API_KEY" ]; then
+            echo "⚠️ 未配置 DEEPSEEK_API_KEY，跳过 AI 回复"
+            exit 0
+          fi
+
+          EVENT_NAME="${{ github.event_name }}"
+          ACTION="${{ github.event.action }}"
+
+          if [ "$EVENT_NAME" = "issues" ] && [ "$ACTION" = "opened" ]; then
+            ISSUE_NUM="${{ github.event.issue.number }}"
+            TITLE="${{ github.event.issue.title }}"
+            BODY="${{ github.event.issue.body }}"
+            
+            echo "📝 新 Issue #$ISSUE_NUM: $TITLE"
+
+            node -e "
+            const axios = require('axios');
+            const {Octokit} = require('octokit');
+            const [owner,repo] = process.env.GITHUB_REPOSITORY.split('/');
+            const gh = new Octokit({auth: process.env.GH_TOKEN});
+            const issueNum = $ISSUE_NUM;
+
+            async function run() {
+              // AI 分析 Issue 内容
+              const aiResp = await axios.post('https://api.deepseek.com/v1/chat/completions', {
+                model: 'deepseek-chat',
+                messages: [
+                  {role:'system',content:'你是开源项目维护者。分析Issue内容，选择操作: 1) 回复并提供帮助; 2) 添加标签; 3) 关闭。输出JSON: {\"action\":\"comment\"|\"close\",\"labels\":[],\"reply\":\"回复内容\"}'},
+                  {role:'user',content:'Issue标题: $TITLE\n内容: ' + '${BODY}'.slice(0,2000)}
+                ]
+              }, {headers:{Authorization:'Bearer '+process.env.DEEPSEEK_API_KEY}});
+
+              let decision;
+              try {
+                const text = aiResp.data.choices[0].message.content;
+                const match = text.match(/\{[\s\S]*\}/);
+                decision = match ? JSON.parse(match[0]) : {action:'comment',reply:text};
+              } catch {
+                decision = {action:'comment',reply:'感谢您的反馈！我们会尽快处理。'};
+              }
+
+              // 添加标签
+              if (decision.labels && decision.labels.length > 0) {
+                try {
+                  await gh.rest.issues.addLabels({owner,repo,issue_number:issueNum,labels:decision.labels});
+                  console.log('🏷️ 添加标签: ' + decision.labels.join(', '));
+                } catch(e) { console.log('⚠️ 标签失败: ' + e.message); }
+              }
+
+              // 回复
+              if (decision.reply) {
+                await gh.rest.issues.createComment({owner,repo,issue_number:issueNum,body:decision.reply});
+                console.log('💬 已自动回复');
+              }
+
+              // 关闭
+              if (decision.action === 'close') {
+                await gh.rest.issues.update({owner,repo,issue_number:issueNum,state:'closed'});
+                console.log('🔒 已关闭');
+              }
+            }
+            run().catch(e => console.error('❌', e.message));
+            "
+          fi
+
+          if [ "$EVENT_NAME" = "pull_request" ] && [ "$ACTION" = "opened" ]; then
+            PR_NUM="${{ github.event.pull_request.number }}"
+            echo "📝 新 PR #$PR_NUM"
+            echo "💬 AI自动回复: 感谢您的贡献！我们会尽快Review。"
+            
+            node -e "
+            const {Octokit} = require('octokit');
+            const [owner,repo] = process.env.GITHUB_REPOSITORY.split('/');
+            const gh = new Octokit({auth: process.env.GH_TOKEN});
+            gh.rest.issues.createComment({
+              owner, repo,
+              issue_number: $PR_NUM,
+              body: '👋 感谢您的 Pull Request！我们会尽快进行 Code Review。\\n\\n> *此回复由 GitHub Agent 自动生成*'
+            }).then(() => console.log('✅ PR 已自动回复'));
+            "
+          fi
