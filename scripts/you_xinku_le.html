@@ -5,425 +5,395 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>你辛苦了</title>
 <style>
-*{margin:0;padding:0;box-sizing:border-box}
+*{margin:0;padding:0}
 body{
-  min-height:100vh;display:flex;justify-content:center;align-items:center;
-  background:#0a0a1a;font-family:"Microsoft YaHei","STKaiti",serif;
-  overflow:hidden;
+  overflow:hidden;background:#000;
+  display:flex;justify-content:center;align-items:center;
+  min-height:100vh;
 }
-canvas{
-  border-radius:12px;box-shadow:0 0 80px rgba(100,150,255,0.15);
-  max-width:100vw;max-height:100vh;
-}
+canvas{display:block}
 </style>
 </head>
 <body>
-<canvas id="c"></canvas>
-<script>
-const c=document.getElementById('c'),ctx=c.getContext('2d');
-c.width=900;c.height=680;
-let t=0;
+<script type="importmap">
+{
+  "imports": {
+    "three": "https://unpkg.com/three@0.160.0/build/three.module.js",
+    "three/addons/": "https://unpkg.com/three@0.160.0/examples/jsm/"
+  }
+}
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
 
-// 粒子系统 —— 灵气
-let particles=[];
-for(let i=0;i<80;i++){
-  particles.push({
-    x:Math.random()*900,y:Math.random()*680,
-    vx:(Math.random()-0.5)*0.3,vy:-0.2-Math.random()*0.5,
-    r:1+Math.random()*2.5,a:0.2+Math.random()*0.5,
-    life:Math.random()*200
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0a0a1a);
+scene.fog = new THREE.Fog(0x0a0a1a, 20, 50);
+
+const camera = new THREE.PerspectiveCamera(45, window.innerWidth/window.innerHeight, 0.1, 100);
+camera.position.set(5, 4, 10);
+camera.lookAt(0, 2, 0);
+
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+document.body.appendChild(renderer.domElement);
+
+const labelRenderer = new CSS2DRenderer();
+labelRenderer.setSize(window.innerWidth, window.innerHeight);
+labelRenderer.domElement.style.position = 'absolute';
+labelRenderer.domElement.style.top = '0';
+labelRenderer.domElement.style.pointerEvents = 'none';
+document.body.appendChild(labelRenderer.domElement);
+
+// ── 灯光 ──
+const ambientLight = new THREE.AmbientLight(0x404060, 0.5);
+scene.add(ambientLight);
+
+const moonLight = new THREE.DirectionalLight(0x8888ff, 1.5);
+moonLight.position.set(-5, 8, 5);
+moonLight.castShadow = true;
+moonLight.shadow.mapSize.width = 1024;
+moonLight.shadow.mapSize.height = 1024;
+scene.add(moonLight);
+
+const fillLight = new THREE.DirectionalLight(0x4466ff, 0.3);
+fillLight.position.set(3, 4, -5);
+scene.add(fillLight);
+
+const rimLight = new THREE.DirectionalLight(0x8888ff, 0.5);
+rimLight.position.set(0, -2, -8);
+scene.add(rimLight);
+
+// ── 环境 ──
+// 地面（仙台）
+const groundGeo = new THREE.PlaneGeometry(30, 20);
+const groundMat = new THREE.MeshStandardMaterial({
+  color: 0x1a1a3e,
+  roughness: 0.8,
+  metalness: 0.1,
+});
+const ground = new THREE.Mesh(groundGeo, groundMat);
+ground.rotation.x = -Math.PI / 2;
+ground.position.y = -0.1;
+ground.receiveShadow = true;
+scene.add(ground);
+
+// 石板纹理辅助线
+for(let i=0; i<20; i++){
+  const lineGeo = new THREE.BoxGeometry(6, 0.02, 0.03);
+  const lineMat = new THREE.MeshStandardMaterial({ color: 0x2a2a5e, transparent: true, opacity: 0.3 });
+  const line = new THREE.Mesh(lineGeo, lineMat);
+  line.position.set(0, 0.01, -3 + i * 0.6);
+  scene.add(line);
+}
+
+// 远山
+for(let i=0; i<5; i++){
+  const mtnGeo = new THREE.ConeGeometry(1.5 + Math.random()*2, 2 + Math.random()*2, 6);
+  const mtnMat = new THREE.MeshStandardMaterial({
+    color: new THREE.Color().setHSL(0.68, 0.15, 0.12 + Math.random()*0.08),
+    roughness: 0.9,
+    metalness: 0,
   });
+  const mtn = new THREE.Mesh(mtnGeo, mtnMat);
+  mtn.position.set(-6 + i*3 + Math.random(), -0.5, -8 - Math.random()*4);
+  mtn.castShadow = true;
+  scene.add(mtn);
 }
 
-function draw(){
-  t+=0.016;
-  ctx.clearRect(0,0,900,680);
+// 云朵（发光粒子）
+const cloudParticles = new THREE.BufferGeometry();
+const cloudCount = 200;
+const positions = new Float32Array(cloudCount * 3);
+for(let i=0; i<cloudCount; i++){
+  positions[i*3] = (Math.random() - 0.5) * 20;
+  positions[i*3+1] = 3 + Math.random() * 3;
+  positions[i*3+2] = -5 - Math.random() * 8;
+}
+cloudParticles.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+const cloudMat = new THREE.PointsMaterial({
+  color: 0x8899cc,
+  size: 0.15,
+  transparent: true,
+  opacity: 0.3,
+  blending: THREE.AdditiveBlending,
+});
+const clouds = new THREE.Points(cloudParticles, cloudMat);
+scene.add(clouds);
 
-  // ── 仙侠风格背景 ──
-  // 远山云海
-  let bg=ctx.createLinearGradient(0,0,0,680);
-  bg.addColorStop(0,'#0f0c29');
-  bg.addColorStop(0.3,'#302b63');
-  bg.addColorStop(0.5,'#24243e');
-  bg.addColorStop(0.7,'#1a1a3e');
-  bg.addColorStop(1,'#0d0d1f');
-  ctx.fillStyle=bg;
-  ctx.fillRect(0,0,900,680);
+// 灵气粒子
+const particleCount = 500;
+const particleGeo = new THREE.BufferGeometry();
+const particlePos = new Float32Array(particleCount * 3);
+const particleSizes = new Float32Array(particleCount);
+for(let i=0; i<particleCount; i++){
+  particlePos[i*3] = (Math.random() - 0.5) * 12;
+  particlePos[i*3+1] = Math.random() * 6;
+  particlePos[i*3+2] = (Math.random() - 0.5) * 8 - 2;
+  particleSizes[i] = 0.02 + Math.random() * 0.06;
+}
+particleGeo.setAttribute('position', new THREE.BufferAttribute(particlePos, 3));
+particleGeo.setAttribute('size', new THREE.BufferAttribute(particleSizes, 1));
+const particleMat = new THREE.PointsMaterial({
+  color: 0x6688ff,
+  size: 0.04,
+  transparent: true,
+  opacity: 0.4,
+  blending: THREE.AdditiveBlending,
+});
+const particles = new THREE.Points(particleGeo, particleMat);
+scene.add(particles);
 
-  // 月亮 / 圆光
-  let moonX=680,moonY=120;
-  let mg=ctx.createRadialGradient(moonX,moonY,0,moonX,moonY,80);
-  mg.addColorStop(0,'rgba(200,220,255,0.4)');
-  mg.addColorStop(0.5,'rgba(150,180,255,0.1)');
-  mg.addColorStop(1,'rgba(100,150,255,0)');
-  ctx.fillStyle=mg;
-  ctx.fillRect(moonX-80,moonY-80,160,160);
-  ctx.beginPath();
-  ctx.arc(moonX,moonY,35,0,Math.PI*2);
-  ctx.fillStyle='rgba(220,235,255,0.25)';
-  ctx.fill();
-  ctx.beginPath();
-  ctx.arc(moonX,moonY,25,0,Math.PI*2);
-  ctx.fillStyle='rgba(240,245,255,0.15)';
-  ctx.fill();
+// 月亮
+const moonGeo = new THREE.SphereGeometry(0.6, 32, 32);
+const moonMat = new THREE.MeshStandardMaterial({
+  color: 0xaaaacc,
+  roughness: 0.2,
+  metalness: 0.1,
+  emissive: 0x6666aa,
+  emissiveIntensity: 0.5,
+});
+const moon = new THREE.Mesh(moonGeo, moonMat);
+moon.position.set(5, 6, -10);
+scene.add(moon);
 
-  // 远山
-  ctx.fillStyle='rgba(30,25,60,0.6)';
-  ctx.beginPath();
-  ctx.moveTo(0,350);
-  for(let x=0;x<=900;x+=3){
-    let y=350+Math.sin(x*0.008)*30+Math.sin(x*0.015)*15+Math.sin(x*0.003)*25;
-    ctx.lineTo(x,y);
+// 月光晕
+const glowGeo = new THREE.SphereGeometry(0.9, 32, 32);
+const glowMat = new THREE.MeshBasicMaterial({
+  color: 0x8888ff,
+  transparent: true,
+  opacity: 0.08,
+});
+const glow = new THREE.Mesh(glowGeo, glowMat);
+glow.position.copy(moon.position);
+scene.add(glow);
+
+// ── 小孩（3D 组装）──
+const childGroup = new THREE.Group();
+childGroup.position.set(-1.8, 0, 0);
+
+// 身体
+const bodyMat = new THREE.MeshStandardMaterial({ color: 0x5D4E37, roughness: 0.7 });
+const body = new THREE.Mesh(new THREE.BoxGeometry(0.5, 0.7, 0.3), bodyMat);
+body.position.y = 0.65;
+body.castShadow = true;
+childGroup.add(body);
+
+// 头
+const headMat = new THREE.MeshStandardMaterial({ color: 0xF5D6C6, roughness: 0.5 });
+const head = new THREE.Mesh(new THREE.SphereGeometry(0.3, 24, 24), headMat);
+head.position.y = 1.15;
+head.castShadow = true;
+childGroup.add(head);
+
+// 发髻
+const hairMat = new THREE.MeshStandardMaterial({ color: 0x2C1810, roughness: 0.8 });
+const hair = new THREE.Mesh(new THREE.SphereGeometry(0.2, 16, 16), hairMat);
+hair.position.set(0, 1.35, 0.2);
+hair.scale.set(1, 0.5, 0.8);
+childGroup.add(hair);
+
+// 眼睛（黑点）
+const eyeMat = new THREE.MeshStandardMaterial({ color: 0x111111 });
+const eyeL = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), eyeMat);
+eyeL.position.set(-0.1, 1.15, 0.3);
+childGroup.add(eyeL);
+const eyeR = new THREE.Mesh(new THREE.SphereGeometry(0.04, 8, 8), eyeMat);
+eyeR.position.set(0.1, 1.15, 0.3);
+childGroup.add(eyeR);
+
+// 左臂（伸出）
+const armMat = new THREE.MeshStandardMaterial({ color: 0xF5D6C6, roughness: 0.5 });
+const leftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.5, 8), armMat);
+leftArm.position.set(0.35, 0.7, 0);
+leftArm.rotation.z = -0.3;
+leftArm.rotation.x = -0.5;
+childGroup.add(leftArm);
+
+// 袖子
+const sleeveMat = new THREE.MeshStandardMaterial({ color: 0x5D4E37, roughness: 0.7 });
+const sleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.1, 0.08, 0.25, 8), sleeveMat);
+sleeve.position.set(0.25, 0.6, 0);
+sleeve.rotation.z = -0.2;
+childGroup.add(sleeve);
+
+// 右臂
+const rightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.06, 0.06, 0.4, 8), armMat);
+rightArm.position.set(-0.35, 0.7, 0);
+rightArm.rotation.z = 0.3;
+childGroup.add(rightArm);
+
+// 腿
+const legMat = new THREE.MeshStandardMaterial({ color: 0x3E2723, roughness: 0.8 });
+const legL = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.25, 8), legMat);
+legL.position.set(-0.12, 0.2, 0);
+childGroup.add(legL);
+const legR = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.25, 8), legMat);
+legR.position.set(0.12, 0.2, 0);
+childGroup.add(legR);
+
+scene.add(childGroup);
+
+// ── 大人（3D 组装）──
+const adultGroup = new THREE.Group();
+adultGroup.position.set(1.8, 0, 0);
+
+// 身体
+const adultBodyMat = new THREE.MeshStandardMaterial({ color: 0x1a2744, roughness: 0.6, metalness: 0.1 });
+const adultBody = new THREE.Mesh(new THREE.BoxGeometry(0.6, 0.85, 0.35), adultBodyMat);
+adultBody.position.y = 0.75;
+adultBody.castShadow = true;
+adultGroup.add(adultBody);
+
+// 头
+const adultHeadMat = new THREE.MeshStandardMaterial({ color: 0xE8D5C0, roughness: 0.4 });
+const adultHead = new THREE.Mesh(new THREE.SphereGeometry(0.32, 24, 24), adultHeadMat);
+adultHead.position.y = 1.3;
+adultHead.castShadow = true;
+adultGroup.add(adultHead);
+
+// 头发
+const adultHairMat = new THREE.MeshStandardMaterial({ color: 0x111111, roughness: 0.9 });
+const adultHair = new THREE.Mesh(new THREE.SphereGeometry(0.34, 16, 16), adultHairMat);
+adultHair.position.set(0, 1.35, 0.1);
+adultHair.scale.set(1, 0.4, 0.9);
+adultGroup.add(adultHair);
+
+// 发簪
+const pinMat = new THREE.MeshStandardMaterial({ color: 0x8D6E63, roughness: 0.3, metalness: 0.2 });
+const pin = new THREE.Mesh(new THREE.CylinderGeometry(0.01, 0.03, 0.25, 6), pinMat);
+pin.position.set(0.25, 1.4, 0.1);
+pin.rotation.x = 0.5;
+pin.rotation.z = 0.3;
+adultGroup.add(pin);
+
+// 眼睛
+const adultEyeL = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), eyeMat);
+adultEyeL.position.set(-0.12, 1.28, 0.32);
+adultGroup.add(adultEyeL);
+const adultEyeR = new THREE.Mesh(new THREE.SphereGeometry(0.035, 8, 8), eyeMat);
+adultEyeR.position.set(0.12, 1.28, 0.32);
+adultGroup.add(adultEyeR);
+
+// 右手（伸出摸小孩）
+const adultArmMat = new THREE.MeshStandardMaterial({ color: 0xE8D5C0, roughness: 0.4 });
+const adultRightArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.5, 8), adultArmMat);
+adultRightArm.position.set(-0.4, 0.85, 0);
+adultRightArm.rotation.z = 0.4;
+adultRightArm.rotation.x = -0.3;
+adultGroup.add(adultRightArm);
+
+// 袖袍
+const adultSleeveMat = new THREE.MeshStandardMaterial({ color: 0x1a2744, roughness: 0.7 });
+const adultSleeve = new THREE.Mesh(new THREE.CylinderGeometry(0.15, 0.1, 0.3, 8), adultSleeveMat);
+adultSleeve.position.set(-0.3, 0.7, 0);
+adultSleeve.rotation.z = 0.3;
+adultGroup.add(adultSleeve);
+
+// 左手
+const adultLeftArm = new THREE.Mesh(new THREE.CylinderGeometry(0.07, 0.07, 0.45, 8), adultArmMat);
+adultLeftArm.position.set(0.4, 0.8, 0);
+adultLeftArm.rotation.z = -0.3;
+adultGroup.add(adultLeftArm);
+
+// 腿
+const adultLegMat = new THREE.MeshStandardMaterial({ color: 0x111, roughness: 0.8 });
+const adultLegL = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8), adultLegMat);
+adultLegL.position.set(-0.15, 0.25, 0);
+adultGroup.add(adultLegL);
+const adultLegR = new THREE.Mesh(new THREE.CylinderGeometry(0.08, 0.08, 0.3, 8), adultLegMat);
+adultLegR.position.set(0.15, 0.25, 0);
+adultGroup.add(adultLegR);
+
+scene.add(adultGroup);
+
+// ── 对话框（CSS2D）──
+const bubbleDiv = document.createElement('div');
+bubbleDiv.textContent = '你辛苦了';
+bubbleDiv.style.color = '#2C1810';
+bubbleDiv.style.fontFamily = '"KaiTi","STKaiti","Microsoft YaHei",serif';
+bubbleDiv.style.fontSize = '32px';
+bubbleDiv.style.fontWeight = 'bold';
+bubbleDiv.style.background = 'rgba(245,240,230,0.92)';
+bubbleDiv.style.border = '2px solid #8D7B5B';
+bubbleDiv.style.borderRadius = '12px';
+bubbleDiv.style.padding = '12px 28px';
+bubbleDiv.style.boxShadow = '0 4px 20px rgba(0,0,0,0.3)';
+bubbleDiv.style.letterSpacing = '4px';
+
+const bubbleLabel = new CSS2DObject(bubbleDiv);
+bubbleLabel.position.set(2.5, 3.5, 0);
+scene.add(bubbleLabel);
+
+// 副标题
+const subDiv = document.createElement('div');
+subDiv.textContent = '小时候的我，摸摸长大的自己';
+subDiv.style.color = 'rgba(180,190,220,0.5)';
+subDiv.style.fontFamily = '"KaiTi","STKaiti","Microsoft YaHei",serif';
+subDiv.style.fontSize = '16px';
+subDiv.style.letterSpacing = '2px';
+const subLabel = new CSS2DObject(subDiv);
+subLabel.position.set(0, -0.8, 0);
+scene.add(subLabel);
+
+// ── 动画循环 ──
+let time = 0;
+
+function animate(){
+  requestAnimationFrame(animate);
+  time += 0.016;
+
+  // 小孩轻轻晃动
+  childGroup.position.y = Math.sin(time * 1.2) * 0.03;
+  // 手臂伸展
+  leftArm.rotation.x = -0.5 + Math.sin(time * 1.8) * 0.15;
+  leftArm.rotation.z = -0.3 + Math.sin(time * 1.8) * 0.08;
+
+  // 大人微微晃动
+  adultGroup.position.y = Math.sin(time * 1.0 + 0.5) * 0.02;
+  // 摸头的手
+  adultRightArm.rotation.z = 0.4 + Math.sin(time * 0.8) * 0.05;
+
+  // 粒子动画
+  const pos = particles.geometry.attributes.position.array;
+  for(let i=0; i<particleCount; i++){
+    pos[i*3+1] += 0.003;
+    if(pos[i*3+1] > 6) pos[i*3+1] = 0;
+    pos[i*3] += Math.sin(time + i) * 0.002;
   }
-  ctx.lineTo(900,500);ctx.lineTo(0,500);ctx.closePath();ctx.fill();
+  particles.geometry.attributes.position.needsUpdate = true;
 
-  // 近山
-  ctx.fillStyle='rgba(20,18,45,0.7)';
-  ctx.beginPath();
-  ctx.moveTo(0,420);
-  for(let x=0;x<=900;x+=3){
-    let y=420+Math.sin(x*0.01+1)*25+Math.sin(x*0.02+2)*20+Math.sin(x*0.004)*30;
-    ctx.lineTo(x,y);
-  }
-  ctx.lineTo(900,500);ctx.lineTo(0,500);ctx.closePath();ctx.fill();
+  // 云动
+  clouds.position.x = Math.sin(time * 0.05) * 0.5;
 
-  // 云海（底层）
-  ctx.fillStyle='rgba(180,200,255,0.04)';
-  for(let i=0;i<6;i++){
-    let bx=(i*160+Math.sin(t*0.3+i)*40)%1000-100;
-    let by=380+Math.sin(t*0.2+i*2)*15;
-    ctx.beginPath();
-    ctx.ellipse(bx,by,120+Math.sin(t*0.1+i)*30,15,0,0,Math.PI*2);
-    ctx.fill();
-  }
+  // 镜头微动
+  camera.position.x = 5 + Math.sin(time * 0.1) * 0.2;
+  camera.position.y = 4 + Math.sin(time * 0.08) * 0.1;
+  camera.lookAt(0, 2, 0);
 
-  // 地面（仙台/山石平台）
-  let ground=ctx.createLinearGradient(0,520,0,680);
-  ground.addColorStop(0,'rgba(40,35,60,0.8)');
-  ground.addColorStop(0.5,'rgba(25,22,45,0.9)');
-  ground.addColorStop(1,'rgba(15,12,30,1)');
-  ctx.fillStyle=ground;
-  ctx.beginPath();
-  ctx.moveTo(0,520);
-  for(let x=0;x<=900;x+=3){
-    let y=520+Math.sin(x*0.01)*8+Math.sin(x*0.025)*5;
-    ctx.lineTo(x,y);
-  }
-  ctx.lineTo(900,680);ctx.lineTo(0,680);ctx.closePath();ctx.fill();
+  // 对话框闪烁
+  bubbleLabel.visible = Math.sin(time * 0.7) > 0.1;
 
-  // 山石纹理
-  ctx.strokeStyle='rgba(60,50,80,0.15)';
-  ctx.lineWidth=1;
-  for(let i=0;i<20;i++){
-    let sx=Math.random()*900,sy=540+Math.random()*100;
-    ctx.beginPath();
-    ctx.moveTo(sx,sy);
-    ctx.lineTo(sx+10+Math.random()*20,sy+5+Math.random()*10);
-    ctx.stroke();
-  }
-
-  // ── 灵气粒子 ──
-  for(let p of particles){
-    p.x+=p.vx;p.y+=p.vy;
-    p.life--;
-    if(p.life<=0||p.y<0||p.x<0||p.x>900){
-      p.x=Math.random()*900;p.y=680;
-      p.life=100+Math.random()*200;
-    }
-    ctx.beginPath();
-    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
-    ctx.fillStyle=`rgba(150,200,255,${p.a*0.4})`;
-    ctx.fill();
-    // 光晕
-    let glow=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*4);
-    glow.addColorStop(0,`rgba(180,220,255,${p.a*0.08})`);
-    glow.addColorStop(1,'rgba(180,220,255,0)');
-    ctx.fillStyle=glow;
-    ctx.beginPath();ctx.arc(p.x,p.y,p.r*4,0,Math.PI*2);ctx.fill();
-  }
-
-  // ── 小孩（左）—— 仙侠童装 ──
-  let cx=230,cy=405;
-  let armReach=Math.sin(t*1.8)*0.3;
-
-  // 衣袍
-  ctx.fillStyle='#5D4E37';
-  ctx.beginPath();
-  ctx.moveTo(cx-20,cy+45);ctx.quadraticCurveTo(cx,cy+35,cx+20,cy+45);
-  ctx.lineTo(cx+25,cy+90);ctx.quadraticCurveTo(cx,cy+100,cx-25,cy+90);
-  ctx.closePath();ctx.fill();
-
-  // 衣领
-  ctx.strokeStyle='#8D7B5B';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(cx-8,cy+38);ctx.quadraticCurveTo(cx,cy+50,cx+8,cy+38);
-  ctx.stroke();
-
-  // 头
-  ctx.fillStyle='#F5D6C6';
-  ctx.beginPath();
-  ctx.arc(cx,cy+18,22,0,Math.PI*2);
-  ctx.fill();
-
-  // 发髻（道童头）
-  ctx.fillStyle='#2C1810';
-  ctx.beginPath();
-  ctx.arc(cx,cy+5,25,Math.PI,0);
-  ctx.fill();
-  // 发髻顶
-  ctx.beginPath();
-  ctx.arc(cx,cy-2,8,0,Math.PI*2);
-  ctx.fill();
-  // 发带
-  ctx.strokeStyle='#C62828';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(cx+6,cy-5);ctx.quadraticCurveTo(cx+20,cy-15,cx+25,cy-8);
-  ctx.stroke();
-  ctx.beginPath();
-  ctx.moveTo(cx-6,cy-5);ctx.quadraticCurveTo(cx-20,cy-15,cx-25,cy-8);
-  ctx.stroke();
-
-  // 眼睛
-  ctx.fillStyle='#1a1a2e';
-  ctx.beginPath();
-  ctx.arc(cx-8,cy+17,3.5,0,Math.PI*2);
-  ctx.arc(cx+8,cy+17,3.5,0,Math.PI*2);
-  ctx.fill();
-  // 高光
-  ctx.fillStyle='rgba(255,255,255,0.5)';
-  ctx.beginPath();
-  ctx.arc(cx-6,cy+15,1.2,0,Math.PI*2);
-  ctx.arc(cx+10,cy+15,1.2,0,Math.PI*2);
-  ctx.fill();
-
-  // 微笑
-  ctx.strokeStyle='#C9756D';
-  ctx.lineWidth=1.5;
-  ctx.beginPath();
-  ctx.arc(cx,cy+24,7,0.1*Math.PI,0.9*Math.PI);
-  ctx.stroke();
-
-  // 左手伸出（摸向大人）
-  ctx.strokeStyle='#F5D6C6';
-  ctx.lineWidth=8;
-  ctx.lineCap='round';
-  ctx.beginPath();
-  ctx.moveTo(cx+20,cy+52);
-  let ex=cx+50+Math.sin(t*1.8)*20;
-  let ey=cy+45-Math.abs(Math.sin(t*1.8))*10;
-  ctx.quadraticCurveTo(cx+35+Math.sin(t*1.8)*10,cy+40,ex,ey);
-  ctx.stroke();
-  // 袖子
-  ctx.strokeStyle='#5D4E37';
-  ctx.lineWidth=11;
-  ctx.beginPath();
-  ctx.moveTo(cx+18,cy+50);
-  ctx.lineTo(cx+40,cy+44);
-  ctx.stroke();
-
-  // 右手（背后）
-  ctx.strokeStyle='#F5D6C6';
-  ctx.lineWidth=7;
-  ctx.beginPath();
-  ctx.moveTo(cx-20,cy+52);
-  ctx.lineTo(cx-38,cy+62);
-  ctx.stroke();
-
-  // 腿
-  ctx.strokeStyle='#3E2723';
-  ctx.lineWidth=6;
-  ctx.lineCap='round';
-  ctx.beginPath();
-  ctx.moveTo(cx-8,cy+92);
-  ctx.quadraticCurveTo(cx-12,cy+105,cx-10,cy+112);
-  ctx.moveTo(cx+8,cy+92);
-  ctx.quadraticCurveTo(cx+12,cy+105,cx+10,cy+112);
-  ctx.stroke();
-
-  // ── 大人（右）—— 韩立风格 ──
-  let ax=600,ay=395;
-  let standBob=Math.sin(t*1.2)*1.5;
-
-  // 衣袍（深蓝/黑）
-  ctx.fillStyle='#1a2744';
-  ctx.beginPath();
-  ctx.moveTo(ax-24,ay+45+standBob);
-  ctx.quadraticCurveTo(ax,ay+35+standBob,ax+24,ay+45+standBob);
-  ctx.lineTo(ax+28,ay+95+standBob);
-  ctx.quadraticCurveTo(ax,ay+105+standBob,ax-28,ay+95+standBob);
-  ctx.closePath();ctx.fill();
-
-  // 衣领/交领
-  ctx.strokeStyle='#2a3a5e';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(ax-10,ay+40+standBob);
-  ctx.quadraticCurveTo(ax,ay+55+standBob,ax+10,ay+40+standBob);
-  ctx.stroke();
-
-  // 腰带
-  ctx.fillStyle='#0d1b2a';
-  ctx.fillRect(ax-22,ay+70+standBob,44,6);
-
-  // 头
-  ctx.fillStyle='#E8D5C0';
-  ctx.beginPath();
-  ctx.arc(ax,ay+18+standBob,24,0,Math.PI*2);
-  ctx.fill();
-
-  // 头发（长发束起）
-  ctx.fillStyle='#1a1a1a';
-  ctx.beginPath();
-  ctx.arc(ax,ay+5+standBob,27,Math.PI,0);
-  ctx.fill();
-  // 发簪
-  ctx.strokeStyle='#8D6E63';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.moveTo(ax+18,ay+standBob);
-  ctx.lineTo(ax+35,ay-12+standBob);
-  ctx.stroke();
-  // 发尾
-  ctx.beginPath();
-  ctx.moveTo(ax-12,ay+5+standBob);
-  ctx.quadraticCurveTo(ax-25,ay+25+standBob,ax-18,ay+40+standBob);
-  ctx.strokeStyle='#1a1a1a';
-  ctx.lineWidth=4;
-  ctx.stroke();
-
-  // 眼睛（韩立的眼神——沉稳）
-  ctx.fillStyle='#1a1a2e';
-  ctx.beginPath();
-  ctx.arc(ax-9,ay+17+standBob,2.8,0,Math.PI*2);
-  ctx.arc(ax+9,ay+17+standBob,2.8,0,Math.PI*2);
-  ctx.fill();
-  // 眉毛（微锁）
-  ctx.strokeStyle='#2C1810';
-  ctx.lineWidth=1.5;
-  ctx.beginPath();
-  ctx.moveTo(ax-14,ay+10+standBob);
-  ctx.quadraticCurveTo(ax-8,ay+6+standBob,ax-4,ay+9+standBob);
-  ctx.moveTo(ax+14,ay+10+standBob);
-  ctx.quadraticCurveTo(ax+8,ay+6+standBob,ax+4,ay+9+standBob);
-  ctx.stroke();
-
-  // 微笑（欣慰）
-  ctx.strokeStyle='#C9756D';
-  ctx.lineWidth=1.5;
-  ctx.beginPath();
-  ctx.arc(ax,ay+25+standBob,6,0.1*Math.PI,0.9*Math.PI);
-  ctx.stroke();
-
-  // 右手（放在小孩头上方）
-  ctx.strokeStyle='#E8D5C0';
-  ctx.lineWidth=9;
-  ctx.lineCap='round';
-  ctx.beginPath();
-  ctx.moveTo(ax-22,ay+48+standBob);
-  ctx.quadraticCurveTo(ax-50,ay+20+standBob,ax-70,ay+10+standBob);
-  ctx.stroke();
-  // 袖袍垂落
-  ctx.strokeStyle='#1a2744';
-  ctx.lineWidth=14;
-  ctx.beginPath();
-  ctx.moveTo(ax-20,ay+46+standBob);
-  ctx.lineTo(ax-45,ay+30+standBob);
-  ctx.stroke();
-
-  // 左手（自然垂落）
-  ctx.strokeStyle='#1a2744';
-  ctx.lineWidth=13;
-  ctx.beginPath();
-  ctx.moveTo(ax+22,ay+48+standBob);
-  ctx.lineTo(ax+42,ay+70+standBob);
-  ctx.stroke();
-  ctx.strokeStyle='#E8D5C0';
-  ctx.lineWidth=8;
-  ctx.beginPath();
-  ctx.moveTo(ax+40,ay+68+standBob);
-  ctx.lineTo(ax+48,ay+80+standBob);
-  ctx.stroke();
-
-  // 腿
-  ctx.strokeStyle='#111';
-  ctx.lineWidth=7;
-  ctx.lineCap='round';
-  ctx.beginPath();
-  ctx.moveTo(ax-10,ay+97+standBob);
-  ctx.lineTo(ax-14,ay+115+standBob);
-  ctx.moveTo(ax+10,ay+97+standBob);
-  ctx.lineTo(ax+14,ay+115+standBob);
-  ctx.stroke();
-
-  // ── 对话框（毛笔风格）──
-  let showBubble=Math.sin(t*0.7)>0.2;
-  if(showBubble){
-    let alpha=Math.min(1,(Math.sin(t*0.7)-0.2)/0.4);
-    ctx.globalAlpha=alpha;
-    // 卷轴背景
-    let bx=570,by=60,bw=260,bh=75;
-    ctx.fillStyle='rgba(245,240,230,0.92)';
-    ctx.strokeStyle='#8D7B5B';
-    ctx.lineWidth=2;
-    roundRect(ctx,bx,by,bw,bh,10);
-    ctx.fill();ctx.stroke();
-    // 卷轴边缘
-    ctx.fillStyle='#C4A882';
-    ctx.fillRect(bx+2,by+2,4,bh-4);
-    ctx.fillRect(bx+bw-6,by+2,4,bh-4);
-    // 文字
-    ctx.fillStyle='#2C1810';
-    ctx.font='bold 28px "STKaiti","KaiTi","Microsoft YaHei",serif';
-    ctx.textAlign='center';
-    ctx.fillText('你辛苦了',bx+bw/2,by+36);
-    ctx.font='16px sans-serif';
-    ctx.fillText('✨ 愿道心永固 ✨',bx+bw/2,by+65);
-    ctx.globalAlpha=1;
-  }
-
-  // ── 灵气光点汇聚 ──
-  for(let i=0;i<5;i++){
-    let px=cx+80+Math.sin(t*2+i*1.3)*30;
-    let py=cy-30-Math.abs(Math.sin(t+i))*40;
-    let g=ctx.createRadialGradient(px,py,0,px,py,6);
-    g.addColorStop(0,'rgba(200,230,255,0.6)');
-    g.addColorStop(1,'rgba(200,230,255,0)');
-    ctx.fillStyle=g;
-    ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();
-  }
-
-  // ── 底部题字 ──
-  ctx.fillStyle='rgba(180,190,220,0.4)';
-  ctx.font='14px "STKaiti","KaiTi","Microsoft YaHei",serif';
-  ctx.textAlign='center';
-  ctx.fillText('—— 小时候的我，摸摸长大的自己 ——',450,660);
-
-  // ── 顶部灵气光晕 ──
-  let topGlow=ctx.createRadialGradient(450,0,0,450,0,300);
-  topGlow.addColorStop(0,'rgba(150,200,255,0.03)');
-  topGlow.addColorStop(1,'rgba(150,200,255,0)');
-  ctx.fillStyle=topGlow;
-  ctx.fillRect(0,0,900,300);
-
-  requestAnimationFrame(draw);
+  renderer.render(scene, camera);
+  labelRenderer.render(scene, camera);
 }
 
-function roundRect(ctx,x,y,w,h,r){
-  ctx.beginPath();
-  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
-  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
-  ctx.lineTo(x+w,y+h-r);
-  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
-  ctx.lineTo(x+r,y+h);
-  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
-  ctx.lineTo(x,y+r);
-  ctx.quadraticCurveTo(x,y,x+r,y);
-  ctx.closePath();
-}
+animate();
 
-draw();
+// ── 自适应 ──
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+  labelRenderer.setSize(window.innerWidth, window.innerHeight);
+});
 </script>
 </body>
 </html>
