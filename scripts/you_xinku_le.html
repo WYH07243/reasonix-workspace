@@ -7,16 +7,13 @@
 <style>
 *{margin:0;padding:0;box-sizing:border-box}
 body{
-  min-height:100vh;
-  display:flex;justify-content:center;align-items:center;
-  background:#1a1a2e;
-  font-family:"Microsoft YaHei",sans-serif;
+  min-height:100vh;display:flex;justify-content:center;align-items:center;
+  background:#0a0a1a;font-family:"Microsoft YaHei","STKaiti",serif;
+  overflow:hidden;
 }
 canvas{
-  border-radius:20px;
-  box-shadow:0 20px 60px rgba(0,0,0,0.3);
-  max-width:100vw;
-  max-height:100vh;
+  border-radius:12px;box-shadow:0 0 80px rgba(100,150,255,0.15);
+  max-width:100vw;max-height:100vh;
 }
 </style>
 </head>
@@ -24,210 +21,391 @@ canvas{
 <canvas id="c"></canvas>
 <script>
 const c=document.getElementById('c'),ctx=c.getContext('2d');
-c.width=800;c.height=600;
+c.width=900;c.height=680;
 let t=0;
 
+// 粒子系统 —— 灵气
+let particles=[];
+for(let i=0;i<80;i++){
+  particles.push({
+    x:Math.random()*900,y:Math.random()*680,
+    vx:(Math.random()-0.5)*0.3,vy:-0.2-Math.random()*0.5,
+    r:1+Math.random()*2.5,a:0.2+Math.random()*0.5,
+    life:Math.random()*200
+  });
+}
+
 function draw(){
-  t+=0.02;
-  ctx.clearRect(0,0,800,600);
+  t+=0.016;
+  ctx.clearRect(0,0,900,680);
 
-  // 天空渐变
-  let sky=ctx.createLinearGradient(0,0,0,400);
-  sky.addColorStop(0,'#87CEEB');
-  sky.addColorStop(0.6,'#E0F7FA');
-  ctx.fillStyle=sky;
-  ctx.fillRect(0,0,800,400);
+  // ── 仙侠风格背景 ──
+  // 远山云海
+  let bg=ctx.createLinearGradient(0,0,0,680);
+  bg.addColorStop(0,'#0f0c29');
+  bg.addColorStop(0.3,'#302b63');
+  bg.addColorStop(0.5,'#24243e');
+  bg.addColorStop(0.7,'#1a1a3e');
+  bg.addColorStop(1,'#0d0d1f');
+  ctx.fillStyle=bg;
+  ctx.fillRect(0,0,900,680);
 
-  // 地面
-  let grd=ctx.createLinearGradient(0,400,0,600);
-  grd.addColorStop(0,'#66BB6A');
-  grd.addColorStop(1,'#388E3C');
-  ctx.fillStyle=grd;
-  ctx.fillRect(0,400,800,200);
+  // 月亮 / 圆光
+  let moonX=680,moonY=120;
+  let mg=ctx.createRadialGradient(moonX,moonY,0,moonX,moonY,80);
+  mg.addColorStop(0,'rgba(200,220,255,0.4)');
+  mg.addColorStop(0.5,'rgba(150,180,255,0.1)');
+  mg.addColorStop(1,'rgba(100,150,255,0)');
+  ctx.fillStyle=mg;
+  ctx.fillRect(moonX-80,moonY-80,160,160);
+  ctx.beginPath();
+  ctx.arc(moonX,moonY,35,0,Math.PI*2);
+  ctx.fillStyle='rgba(220,235,255,0.25)';
+  ctx.fill();
+  ctx.beginPath();
+  ctx.arc(moonX,moonY,25,0,Math.PI*2);
+  ctx.fillStyle='rgba(240,245,255,0.15)';
+  ctx.fill();
 
-  // 云朵
-  ctx.fillStyle='rgba(255,255,255,0.8)';
-  for(let x of[120,300,550,680]){
-    let cy=60+Math.sin(t+x/100)*8;
+  // 远山
+  ctx.fillStyle='rgba(30,25,60,0.6)';
+  ctx.beginPath();
+  ctx.moveTo(0,350);
+  for(let x=0;x<=900;x+=3){
+    let y=350+Math.sin(x*0.008)*30+Math.sin(x*0.015)*15+Math.sin(x*0.003)*25;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(900,500);ctx.lineTo(0,500);ctx.closePath();ctx.fill();
+
+  // 近山
+  ctx.fillStyle='rgba(20,18,45,0.7)';
+  ctx.beginPath();
+  ctx.moveTo(0,420);
+  for(let x=0;x<=900;x+=3){
+    let y=420+Math.sin(x*0.01+1)*25+Math.sin(x*0.02+2)*20+Math.sin(x*0.004)*30;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(900,500);ctx.lineTo(0,500);ctx.closePath();ctx.fill();
+
+  // 云海（底层）
+  ctx.fillStyle='rgba(180,200,255,0.04)';
+  for(let i=0;i<6;i++){
+    let bx=(i*160+Math.sin(t*0.3+i)*40)%1000-100;
+    let by=380+Math.sin(t*0.2+i*2)*15;
     ctx.beginPath();
-    ctx.arc(x,cy,30,0,Math.PI*2);
-    ctx.arc(x+30,cy-8,25,0,Math.PI*2);
-    ctx.arc(x+50,cy,28,0,Math.PI*2);
+    ctx.ellipse(bx,by,120+Math.sin(t*0.1+i)*30,15,0,0,Math.PI*2);
     ctx.fill();
   }
 
-  // 太阳
-  let sx=700,sy=70;
+  // 地面（仙台/山石平台）
+  let ground=ctx.createLinearGradient(0,520,0,680);
+  ground.addColorStop(0,'rgba(40,35,60,0.8)');
+  ground.addColorStop(0.5,'rgba(25,22,45,0.9)');
+  ground.addColorStop(1,'rgba(15,12,30,1)');
+  ctx.fillStyle=ground;
   ctx.beginPath();
-  ctx.arc(sx,sy,35,0,Math.PI*2);
-  ctx.fillStyle='#FFF176';
-  ctx.fill();
-  ctx.shadowColor='#FFF176';
-  ctx.shadowBlur=40;
-  ctx.fill();
-  ctx.shadowBlur=0;
+  ctx.moveTo(0,520);
+  for(let x=0;x<=900;x+=3){
+    let y=520+Math.sin(x*0.01)*8+Math.sin(x*0.025)*5;
+    ctx.lineTo(x,y);
+  }
+  ctx.lineTo(900,680);ctx.lineTo(0,680);ctx.closePath();ctx.fill();
 
-  // ── 小孩（左）──
-  let cx=200,cy=330;
-  let armAngle=Math.sin(t*2)*0.3;
+  // 山石纹理
+  ctx.strokeStyle='rgba(60,50,80,0.15)';
+  ctx.lineWidth=1;
+  for(let i=0;i<20;i++){
+    let sx=Math.random()*900,sy=540+Math.random()*100;
+    ctx.beginPath();
+    ctx.moveTo(sx,sy);
+    ctx.lineTo(sx+10+Math.random()*20,sy+5+Math.random()*10);
+    ctx.stroke();
+  }
 
-  // 身体
-  ctx.fillStyle='#FFF9C4';
-  ctx.fillRect(cx-18,cy+40,36,45);
+  // ── 灵气粒子 ──
+  for(let p of particles){
+    p.x+=p.vx;p.y+=p.vy;
+    p.life--;
+    if(p.life<=0||p.y<0||p.x<0||p.x>900){
+      p.x=Math.random()*900;p.y=680;
+      p.life=100+Math.random()*200;
+    }
+    ctx.beginPath();
+    ctx.arc(p.x,p.y,p.r,0,Math.PI*2);
+    ctx.fillStyle=`rgba(150,200,255,${p.a*0.4})`;
+    ctx.fill();
+    // 光晕
+    let glow=ctx.createRadialGradient(p.x,p.y,0,p.x,p.y,p.r*4);
+    glow.addColorStop(0,`rgba(180,220,255,${p.a*0.08})`);
+    glow.addColorStop(1,'rgba(180,220,255,0)');
+    ctx.fillStyle=glow;
+    ctx.beginPath();ctx.arc(p.x,p.y,p.r*4,0,Math.PI*2);ctx.fill();
+  }
+
+  // ── 小孩（左）—— 仙侠童装 ──
+  let cx=230,cy=405;
+  let armReach=Math.sin(t*1.8)*0.3;
+
+  // 衣袍
+  ctx.fillStyle='#5D4E37';
+  ctx.beginPath();
+  ctx.moveTo(cx-20,cy+45);ctx.quadraticCurveTo(cx,cy+35,cx+20,cy+45);
+  ctx.lineTo(cx+25,cy+90);ctx.quadraticCurveTo(cx,cy+100,cx-25,cy+90);
+  ctx.closePath();ctx.fill();
+
+  // 衣领
+  ctx.strokeStyle='#8D7B5B';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(cx-8,cy+38);ctx.quadraticCurveTo(cx,cy+50,cx+8,cy+38);
+  ctx.stroke();
 
   // 头
-  ctx.fillStyle='#FFCCBC';
+  ctx.fillStyle='#F5D6C6';
   ctx.beginPath();
-  ctx.arc(cx,cy+20,23,0,Math.PI*2);
+  ctx.arc(cx,cy+18,22,0,Math.PI*2);
   ctx.fill();
 
-  // 头发
-  ctx.fillStyle='#5D4037';
+  // 发髻（道童头）
+  ctx.fillStyle='#2C1810';
   ctx.beginPath();
-  ctx.arc(cx,cy+8,26,Math.PI,Math.PI*2);
+  ctx.arc(cx,cy+5,25,Math.PI,0);
   ctx.fill();
+  // 发髻顶
+  ctx.beginPath();
+  ctx.arc(cx,cy-2,8,0,Math.PI*2);
+  ctx.fill();
+  // 发带
+  ctx.strokeStyle='#C62828';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(cx+6,cy-5);ctx.quadraticCurveTo(cx+20,cy-15,cx+25,cy-8);
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx-6,cy-5);ctx.quadraticCurveTo(cx-20,cy-15,cx-25,cy-8);
+  ctx.stroke();
 
   // 眼睛
-  ctx.fillStyle='#333';
+  ctx.fillStyle='#1a1a2e';
   ctx.beginPath();
-  ctx.arc(cx-8,cy+17,3,0,Math.PI*2);
-  ctx.arc(cx+8,cy+17,3,0,Math.PI*2);
+  ctx.arc(cx-8,cy+17,3.5,0,Math.PI*2);
+  ctx.arc(cx+8,cy+17,3.5,0,Math.PI*2);
+  ctx.fill();
+  // 高光
+  ctx.fillStyle='rgba(255,255,255,0.5)';
+  ctx.beginPath();
+  ctx.arc(cx-6,cy+15,1.2,0,Math.PI*2);
+  ctx.arc(cx+10,cy+15,1.2,0,Math.PI*2);
   ctx.fill();
 
   // 微笑
-  ctx.strokeStyle='#E53935';
-  ctx.lineWidth=2;
+  ctx.strokeStyle='#C9756D';
+  ctx.lineWidth=1.5;
   ctx.beginPath();
-  ctx.arc(cx,cy+25,8,0.1*Math.PI,0.9*Math.PI);
+  ctx.arc(cx,cy+24,7,0.1*Math.PI,0.9*Math.PI);
   ctx.stroke();
 
-  // 左手（伸向大人）
-  ctx.strokeStyle='#FFCCBC';
-  ctx.lineWidth=12;
-  ctx.lineCap='round';
-  ctx.beginPath();
-  ctx.moveTo(cx+18,cy+55);
-  let reachX=cx+40+Math.sin(t*2)*15;
-  let reachY=cy+50-Math.sin(t*2)*5;
-  ctx.lineTo(reachX,reachY);
-  ctx.stroke();
-
-  // 右手
-  ctx.beginPath();
-  ctx.moveTo(cx-18,cy+55);
-  ctx.lineTo(cx-40,cy+65);
-  ctx.stroke();
-
-  // 腿
-  ctx.strokeStyle='#5D4037';
-  ctx.lineWidth=7;
-  ctx.lineCap='round';
-  ctx.beginPath();
-  ctx.moveTo(cx-8,cy+85);
-  ctx.lineTo(cx-12,cy+105);
-  ctx.moveTo(cx+8,cy+85);
-  ctx.lineTo(cx+12,cy+105);
-  ctx.stroke();
-
-  // ── 大人（右）──
-  let ax=550,ay=320;
-  let adultBob=Math.sin(t)*2;
-
-  // 身体（西装）
-  ctx.fillStyle='#1565C0';
-  ctx.fillRect(ax-22,ay+40+adultBob,44,55);
-  // 领带
-  ctx.fillStyle='#C62828';
-  ctx.fillRect(ax-3,ay+45+adultBob,6,20);
-
-  // 头
-  ctx.fillStyle='#FFE0B2';
-  ctx.beginPath();
-  ctx.arc(ax,ay+18+adultBob,26,0,Math.PI*2);
-  ctx.fill();
-
-  // 头发
-  ctx.fillStyle='#4E342E';
-  ctx.beginPath();
-  ctx.arc(ax,ay+6+adultBob,29,Math.PI,Math.PI*2);
-  ctx.fill();
-
-  // 眼睛
-  ctx.fillStyle='#333';
-  ctx.beginPath();
-  ctx.arc(ax-10,ay+16+adultBob,3,0,Math.PI*2);
-  ctx.arc(ax+10,ay+16+adultBob,3,0,Math.PI*2);
-  ctx.fill();
-
-  // 微笑
-  ctx.strokeStyle='#E53935';
-  ctx.lineWidth=2;
-  ctx.beginPath();
-  ctx.arc(ax,ay+26+adultBob,9,0.1*Math.PI,0.9*Math.PI);
-  ctx.stroke();
-
-  // 手臂（自然垂放）
-  ctx.strokeStyle='#FFE0B2';
-  ctx.lineWidth=12;
-  ctx.lineCap='round';
-  ctx.beginPath();
-  ctx.moveTo(ax+22,ay+50+adultBob);
-  ctx.lineTo(ax+40,ay+75+adultBob);
-  ctx.moveTo(ax-22,ay+50+adultBob);
-  ctx.lineTo(ax-40,ay+75+adultBob);
-  ctx.stroke();
-
-  // 腿
-  ctx.strokeStyle='#37474F';
+  // 左手伸出（摸向大人）
+  ctx.strokeStyle='#F5D6C6';
   ctx.lineWidth=8;
   ctx.lineCap='round';
   ctx.beginPath();
-  ctx.moveTo(ax-10,ay+95+adultBob);
-  ctx.lineTo(ax-14,ay+115+adultBob);
-  ctx.moveTo(ax+10,ay+95+adultBob);
-  ctx.lineTo(ax+14,ay+115+adultBob);
+  ctx.moveTo(cx+20,cy+52);
+  let ex=cx+50+Math.sin(t*1.8)*20;
+  let ey=cy+45-Math.abs(Math.sin(t*1.8))*10;
+  ctx.quadraticCurveTo(cx+35+Math.sin(t*1.8)*10,cy+40,ex,ey);
+  ctx.stroke();
+  // 袖子
+  ctx.strokeStyle='#5D4E37';
+  ctx.lineWidth=11;
+  ctx.beginPath();
+  ctx.moveTo(cx+18,cy+50);
+  ctx.lineTo(cx+40,cy+44);
   ctx.stroke();
 
-  // ── 对话框 ──
-  let bubbleAlpha=Math.sin(t*0.8)>0.3?1:0;
-  if(bubbleAlpha>0){
-    ctx.globalAlpha=Math.min(1,(Math.sin(t*0.8)-0.3)/0.7);
-    ctx.fillStyle='white';
-    ctx.strokeStyle='#ddd';
+  // 右手（背后）
+  ctx.strokeStyle='#F5D6C6';
+  ctx.lineWidth=7;
+  ctx.beginPath();
+  ctx.moveTo(cx-20,cy+52);
+  ctx.lineTo(cx-38,cy+62);
+  ctx.stroke();
+
+  // 腿
+  ctx.strokeStyle='#3E2723';
+  ctx.lineWidth=6;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(cx-8,cy+92);
+  ctx.quadraticCurveTo(cx-12,cy+105,cx-10,cy+112);
+  ctx.moveTo(cx+8,cy+92);
+  ctx.quadraticCurveTo(cx+12,cy+105,cx+10,cy+112);
+  ctx.stroke();
+
+  // ── 大人（右）—— 韩立风格 ──
+  let ax=600,ay=395;
+  let standBob=Math.sin(t*1.2)*1.5;
+
+  // 衣袍（深蓝/黑）
+  ctx.fillStyle='#1a2744';
+  ctx.beginPath();
+  ctx.moveTo(ax-24,ay+45+standBob);
+  ctx.quadraticCurveTo(ax,ay+35+standBob,ax+24,ay+45+standBob);
+  ctx.lineTo(ax+28,ay+95+standBob);
+  ctx.quadraticCurveTo(ax,ay+105+standBob,ax-28,ay+95+standBob);
+  ctx.closePath();ctx.fill();
+
+  // 衣领/交领
+  ctx.strokeStyle='#2a3a5e';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(ax-10,ay+40+standBob);
+  ctx.quadraticCurveTo(ax,ay+55+standBob,ax+10,ay+40+standBob);
+  ctx.stroke();
+
+  // 腰带
+  ctx.fillStyle='#0d1b2a';
+  ctx.fillRect(ax-22,ay+70+standBob,44,6);
+
+  // 头
+  ctx.fillStyle='#E8D5C0';
+  ctx.beginPath();
+  ctx.arc(ax,ay+18+standBob,24,0,Math.PI*2);
+  ctx.fill();
+
+  // 头发（长发束起）
+  ctx.fillStyle='#1a1a1a';
+  ctx.beginPath();
+  ctx.arc(ax,ay+5+standBob,27,Math.PI,0);
+  ctx.fill();
+  // 发簪
+  ctx.strokeStyle='#8D6E63';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.moveTo(ax+18,ay+standBob);
+  ctx.lineTo(ax+35,ay-12+standBob);
+  ctx.stroke();
+  // 发尾
+  ctx.beginPath();
+  ctx.moveTo(ax-12,ay+5+standBob);
+  ctx.quadraticCurveTo(ax-25,ay+25+standBob,ax-18,ay+40+standBob);
+  ctx.strokeStyle='#1a1a1a';
+  ctx.lineWidth=4;
+  ctx.stroke();
+
+  // 眼睛（韩立的眼神——沉稳）
+  ctx.fillStyle='#1a1a2e';
+  ctx.beginPath();
+  ctx.arc(ax-9,ay+17+standBob,2.8,0,Math.PI*2);
+  ctx.arc(ax+9,ay+17+standBob,2.8,0,Math.PI*2);
+  ctx.fill();
+  // 眉毛（微锁）
+  ctx.strokeStyle='#2C1810';
+  ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.moveTo(ax-14,ay+10+standBob);
+  ctx.quadraticCurveTo(ax-8,ay+6+standBob,ax-4,ay+9+standBob);
+  ctx.moveTo(ax+14,ay+10+standBob);
+  ctx.quadraticCurveTo(ax+8,ay+6+standBob,ax+4,ay+9+standBob);
+  ctx.stroke();
+
+  // 微笑（欣慰）
+  ctx.strokeStyle='#C9756D';
+  ctx.lineWidth=1.5;
+  ctx.beginPath();
+  ctx.arc(ax,ay+25+standBob,6,0.1*Math.PI,0.9*Math.PI);
+  ctx.stroke();
+
+  // 右手（放在小孩头上方）
+  ctx.strokeStyle='#E8D5C0';
+  ctx.lineWidth=9;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(ax-22,ay+48+standBob);
+  ctx.quadraticCurveTo(ax-50,ay+20+standBob,ax-70,ay+10+standBob);
+  ctx.stroke();
+  // 袖袍垂落
+  ctx.strokeStyle='#1a2744';
+  ctx.lineWidth=14;
+  ctx.beginPath();
+  ctx.moveTo(ax-20,ay+46+standBob);
+  ctx.lineTo(ax-45,ay+30+standBob);
+  ctx.stroke();
+
+  // 左手（自然垂落）
+  ctx.strokeStyle='#1a2744';
+  ctx.lineWidth=13;
+  ctx.beginPath();
+  ctx.moveTo(ax+22,ay+48+standBob);
+  ctx.lineTo(ax+42,ay+70+standBob);
+  ctx.stroke();
+  ctx.strokeStyle='#E8D5C0';
+  ctx.lineWidth=8;
+  ctx.beginPath();
+  ctx.moveTo(ax+40,ay+68+standBob);
+  ctx.lineTo(ax+48,ay+80+standBob);
+  ctx.stroke();
+
+  // 腿
+  ctx.strokeStyle='#111';
+  ctx.lineWidth=7;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(ax-10,ay+97+standBob);
+  ctx.lineTo(ax-14,ay+115+standBob);
+  ctx.moveTo(ax+10,ay+97+standBob);
+  ctx.lineTo(ax+14,ay+115+standBob);
+  ctx.stroke();
+
+  // ── 对话框（毛笔风格）──
+  let showBubble=Math.sin(t*0.7)>0.2;
+  if(showBubble){
+    let alpha=Math.min(1,(Math.sin(t*0.7)-0.2)/0.4);
+    ctx.globalAlpha=alpha;
+    // 卷轴背景
+    let bx=570,by=60,bw=260,bh=75;
+    ctx.fillStyle='rgba(245,240,230,0.92)';
+    ctx.strokeStyle='#8D7B5B';
     ctx.lineWidth=2;
-    roundRect(ctx,560,80,180,70,20);
+    roundRect(ctx,bx,by,bw,bh,10);
     ctx.fill();ctx.stroke();
-    // 三角
-    ctx.beginPath();
-    ctx.moveTo(560+30,150);
-    ctx.lineTo(560+50,165);
-    ctx.lineTo(560+50,150);
-    ctx.fill();
+    // 卷轴边缘
+    ctx.fillStyle='#C4A882';
+    ctx.fillRect(bx+2,by+2,4,bh-4);
+    ctx.fillRect(bx+bw-6,by+2,4,bh-4);
     // 文字
-    ctx.fillStyle='#333';
-    ctx.font='bold 24px "Microsoft YaHei",sans-serif';
+    ctx.fillStyle='#2C1810';
+    ctx.font='bold 28px "STKaiti","KaiTi","Microsoft YaHei",serif';
     ctx.textAlign='center';
-    ctx.fillText('你辛苦了',650,122);
-    ctx.font='18px sans-serif';
-    ctx.fillText('💪',650,148);
+    ctx.fillText('你辛苦了',bx+bw/2,by+36);
+    ctx.font='16px sans-serif';
+    ctx.fillText('✨ 愿道心永固 ✨',bx+bw/2,by+65);
     ctx.globalAlpha=1;
   }
 
-  // ── 爱心 ──
-  let heartPhase=Math.sin(t*2);
-  if(heartPhase>0.3){
-    ctx.globalAlpha=(heartPhase-0.3)/0.7;
-    ctx.font='28px sans-serif';
-    ctx.textAlign='center';
-    ctx.fillText('❤️',cx+80+Math.sin(t*3)*10,cy-20-Math.sin(t*2)*15);
-    ctx.globalAlpha=1;
+  // ── 灵气光点汇聚 ──
+  for(let i=0;i<5;i++){
+    let px=cx+80+Math.sin(t*2+i*1.3)*30;
+    let py=cy-30-Math.abs(Math.sin(t+i))*40;
+    let g=ctx.createRadialGradient(px,py,0,px,py,6);
+    g.addColorStop(0,'rgba(200,230,255,0.6)');
+    g.addColorStop(1,'rgba(200,230,255,0)');
+    ctx.fillStyle=g;
+    ctx.beginPath();ctx.arc(px,py,6,0,Math.PI*2);ctx.fill();
   }
 
-  // ── 底部文字 ──
-  ctx.fillStyle='rgba(255,255,255,0.7)';
-  ctx.font='15px "Microsoft YaHei",sans-serif';
+  // ── 底部题字 ──
+  ctx.fillStyle='rgba(180,190,220,0.4)';
+  ctx.font='14px "STKaiti","KaiTi","Microsoft YaHei",serif';
   ctx.textAlign='center';
-  ctx.fillText('小时候的我，摸摸长大的自己',400,580);
+  ctx.fillText('—— 小时候的我，摸摸长大的自己 ——',450,660);
+
+  // ── 顶部灵气光晕 ──
+  let topGlow=ctx.createRadialGradient(450,0,0,450,0,300);
+  topGlow.addColorStop(0,'rgba(150,200,255,0.03)');
+  topGlow.addColorStop(1,'rgba(150,200,255,0)');
+  ctx.fillStyle=topGlow;
+  ctx.fillRect(0,0,900,300);
 
   requestAnimationFrame(draw);
 }
