@@ -5,264 +5,247 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>你辛苦了</title>
 <style>
-* { margin: 0; padding: 0; box-sizing: border-box; }
-body {
-  min-height: 100vh;
-  background: linear-gradient(180deg, #fce4ec 0%, #e8f5e9 100%);
-  display: flex; justify-content: center; align-items: center;
-  font-family: "Microsoft YaHei", sans-serif;
-  overflow: hidden;
+*{margin:0;padding:0;box-sizing:border-box}
+body{
+  min-height:100vh;
+  display:flex;justify-content:center;align-items:center;
+  background:#1a1a2e;
+  font-family:"Microsoft YaHei",sans-serif;
 }
-.scene {
-  position: relative;
-  width: 700px; height: 500px;
-  background: linear-gradient(180deg, #b3e5fc 0%, #81d4fa 60%, #a5d6a7 60%, #81c784 100%);
-  border-radius: 24px;
-  box-shadow: 0 20px 60px rgba(0,0,0,0.15);
-  overflow: hidden;
-}
-
-/* 地面 */
-.ground { position: absolute; bottom: 0; left: 0; right: 0; height: 40%;
-  background: linear-gradient(0deg, #66bb6a, #81c784); }
-
-/* 云朵 */
-.cloud {
-  position: absolute; background: rgba(255,255,255,0.8);
-  border-radius: 50px; animation: cloudFloat 6s ease-in-out infinite;
-}
-.cloud1 { width: 80px; height: 30px; top: 40px; left: 60px; animation-delay: 0s; }
-.cloud2 { width: 100px; height: 35px; top: 60px; left: 350px; animation-delay: 2s; }
-.cloud3 { width: 60px; height: 25px; top: 30px; left: 520px; animation-delay: 4s; }
-.cloud::before, .cloud::after {
-  content: ''; position: absolute; background: rgba(255,255,255,0.8); border-radius: 50%;
-}
-.cloud::before { width: 40px; height: 40px; top: -18px; left: 15px; }
-.cloud::after { width: 30px; height: 30px; top: -12px; left: 40px; }
-@keyframes cloudFloat {
-  0%, 100% { transform: translateX(0); }
-  50% { transform: translateX(20px); }
-}
-
-/* 太阳 */
-.sun {
-  position: absolute; top: 30px; right: 60px;
-  width: 50px; height: 50px; background: #fff176;
-  border-radius: 50%; box-shadow: 0 0 40px #fff176;
-  animation: sunPulse 3s ease-in-out infinite;
-}
-@keyframes sunPulse {
-  0%, 100% { transform: scale(1); box-shadow: 0 0 40px #fff176; }
-  50% { transform: scale(1.1); box-shadow: 0 0 60px #fff9c4; }
-}
-
-/* ── 小孩（左侧）── */
-.child {
-  position: absolute; bottom: 38%; left: 18%;
-  width: 80px; height: 120px;
-  animation: childBounce 2s ease-in-out infinite;
-}
-@keyframes childBounce {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-5px); }
-}
-/* 头 */
-.child-head {
-  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: 45px; height: 45px; background: #ffccbc;
-  border-radius: 50%;
-}
-/* 头发 */
-.child-hair {
-  position: absolute; top: -2px; left: 50%; transform: translateX(-50%);
-  width: 50px; height: 25px; background: #5d4037;
-  border-radius: 50% 50% 0 0;
-}
-/* 眼睛 */
-.child-eye-l, .child-eye-r {
-  position: absolute; top: 16px; width: 5px; height: 6px;
-  background: #333; border-radius: 50%;
-}
-.child-eye-l { left: 12px; }
-.child-eye-r { left: 28px; }
-/* 嘴巴 */
-.child-mouth {
-  position: absolute; top: 26px; left: 50%; transform: translateX(-50%);
-  width: 10px; height: 5px; border-bottom: 2.5px solid #e53935;
-  border-radius: 0 0 10px 10px;
-}
-/* 身体 */
-.child-body {
-  position: absolute; top: 42px; left: 50%; transform: translateX(-50%);
-  width: 36px; height: 40px; background: #fff9c4;
-  border-radius: 10px 10px 5px 5px;
-}
-/* 手臂（向前伸的动画） */
-.child-arm {
-  position: absolute; top: 50px; left: 48px;
-  width: 45px; height: 12px; background: #ffccbc;
-  border-radius: 6px; transform-origin: left center;
-  animation: armReach 4s ease-in-out infinite;
-}
-@keyframes armReach {
-  0%, 60%, 100% { transform: rotate(0deg) translateX(0); }
-  20%, 40% { transform: rotate(-10deg) translateX(25px); }
-}
-/* 另一只手臂 */
-.child-arm2 {
-  position: absolute; top: 50px; left: 48px;
-  width: 40px; height: 10px; background: #ffccbc;
-  border-radius: 5px; transform-origin: left center;
-  animation: armReach2 4s ease-in-out infinite;
-}
-@keyframes armReach2 {
-  0%, 60%, 100% { transform: rotate(5deg) translateX(0); }
-  20%, 40% { transform: rotate(-5deg) translateX(20px); }
-}
-/* 腿 */
-.child-leg-l, .child-leg-r {
-  position: absolute; bottom: -12px; width: 12px; height: 20px;
-  background: #5d4037; border-radius: 0 0 5px 5px;
-}
-.child-leg-l { left: 6px; }
-.child-leg-r { left: 18px; }
-
-/* ── 大人（右侧）── */
-.adult {
-  position: absolute; bottom: 35%; right: 18%;
-  width: 100px; height: 150px;
-  animation: adultStand 3s ease-in-out infinite;
-}
-@keyframes adultStand {
-  0%, 100% { transform: translateY(0); }
-  50% { transform: translateY(-3px); }
-}
-.adult-head {
-  position: absolute; top: 0; left: 50%; transform: translateX(-50%);
-  width: 55px; height: 55px; background: #ffe0b2;
-  border-radius: 50%;
-}
-.adult-hair {
-  position: absolute; top: -3px; left: 50%; transform: translateX(-50%);
-  width: 60px; height: 30px; background: #4e342e;
-  border-radius: 50% 50% 0 0;
-}
-.adult-eye-l, .adult-eye-r {
-  position: absolute; top: 20px; width: 5px; height: 6px;
-  background: #333; border-radius: 50%;
-}
-.adult-eye-l { left: 15px; }
-.adult-eye-r { left: 35px; }
-.adult-mouth {
-  position: absolute; top: 32px; left: 50%; transform: translateX(-50%);
-  width: 14px; height: 6px; border-bottom: 2.5px solid #e53935;
-  border-radius: 0 0 12px 12px;
-  animation: mouthMove 4s ease-in-out infinite;
-}
-.adult-body {
-  position: absolute; top: 52px; left: 50%; transform: translateX(-50%);
-  width: 46px; height: 55px; background: #1565c0;
-  border-radius: 12px 12px 5px 5px;
-}
-.adult-leg-l, .adult-leg-r {
-  position: absolute; bottom: -12px; width: 14px; height: 24px;
-  background: #37474f; border-radius: 0 0 5px 5px;
-}
-.adult-leg-l { left: 8px; }
-.adult-leg-r { left: 24px; }
-
-/* ── 对话框 ── */
-.speech-bubble {
-  position: absolute; top: 8%; right: 5%;
-  background: white; padding: 16px 28px;
-  border-radius: 20px; box-shadow: 0 4px 15px rgba(0,0,0,0.1);
-  font-size: 22px; color: #333; font-weight: bold;
-  letter-spacing: 2px;
-  opacity: 0; transform: scale(0.5);
-  animation: bubbleIn 4s ease-in-out infinite;
-}
-@keyframes bubbleIn {
-  0%, 15%, 55%, 100% { opacity: 0; transform: scale(0.5); }
-  20%, 50% { opacity: 1; transform: scale(1); }
-}
-.speech-bubble::after {
-  content: ''; position: absolute; bottom: -12px; left: 40px;
-  width: 0; height: 0; border-left: 12px solid transparent;
-  border-right: 12px solid transparent; border-top: 14px solid white;
-}
-
-/* ── 爱心 ── */
-.hearts {
-  position: absolute; top: 30%; left: 38%;
-  font-size: 20px; opacity: 0;
-  animation: heartsFloat 4s ease-in-out infinite;
-}
-@keyframes heartsFloat {
-  0%, 15%, 100% { opacity: 0; transform: translateY(0) scale(0.5); }
-  20%, 50% { opacity: 1; transform: translateY(-30px) scale(1); }
-}
-.hearts span {
-  display: inline-block; animation: heartBeat 1s ease-in-out infinite;
-}
-@keyframes heartBeat {
-  0%, 100% { transform: scale(1); }
-  50% { transform: scale(1.2); }
-}
-
-/* 标题 */
-.title {
-  position: absolute; bottom: 8%; left: 0; right: 0;
-  text-align: center; color: rgba(255,255,255,0.9);
-  font-size: 14px; font-weight: 300;
-  text-shadow: 0 1px 3px rgba(0,0,0,0.2);
+canvas{
+  border-radius:20px;
+  box-shadow:0 20px 60px rgba(0,0,0,0.3);
+  max-width:100vw;
+  max-height:100vh;
 }
 </style>
 </head>
 <body>
+<canvas id="c"></canvas>
+<script>
+const c=document.getElementById('c'),ctx=c.getContext('2d');
+c.width=800;c.height=600;
+let t=0;
 
-<div class="scene">
-  <!-- 背景 -->
-  <div class="ground"></div>
-  <div class="cloud cloud1"></div>
-  <div class="cloud cloud2"></div>
-  <div class="cloud cloud3"></div>
-  <div class="sun"></div>
+function draw(){
+  t+=0.02;
+  ctx.clearRect(0,0,800,600);
 
-  <!-- 小孩 -->
-  <div class="child">
-    <div class="child-head">
-      <div class="child-hair"></div>
-      <div class="child-eye-l"></div>
-      <div class="child-eye-r"></div>
-      <div class="child-mouth"></div>
-    </div>
-    <div class="child-body"></div>
-    <div class="child-arm"></div>
-    <div class="child-leg-l"></div>
-    <div class="child-leg-r"></div>
-  </div>
+  // 天空渐变
+  let sky=ctx.createLinearGradient(0,0,0,400);
+  sky.addColorStop(0,'#87CEEB');
+  sky.addColorStop(0.6,'#E0F7FA');
+  ctx.fillStyle=sky;
+  ctx.fillRect(0,0,800,400);
 
-  <!-- 大人 -->
-  <div class="adult">
-    <div class="adult-head">
-      <div class="adult-hair"></div>
-      <div class="adult-eye-l"></div>
-      <div class="adult-eye-r"></div>
-      <div class="adult-mouth"></div>
-    </div>
-    <div class="adult-body"></div>
-    <div class="adult-leg-l"></div>
-    <div class="adult-leg-r"></div>
-  </div>
+  // 地面
+  let grd=ctx.createLinearGradient(0,400,0,600);
+  grd.addColorStop(0,'#66BB6A');
+  grd.addColorStop(1,'#388E3C');
+  ctx.fillStyle=grd;
+  ctx.fillRect(0,400,800,200);
 
-  <!-- 对话框 -->
-  <div class="speech-bubble">你辛苦了 💪</div>
+  // 云朵
+  ctx.fillStyle='rgba(255,255,255,0.8)';
+  for(let x of[120,300,550,680]){
+    let cy=60+Math.sin(t+x/100)*8;
+    ctx.beginPath();
+    ctx.arc(x,cy,30,0,Math.PI*2);
+    ctx.arc(x+30,cy-8,25,0,Math.PI*2);
+    ctx.arc(x+50,cy,28,0,Math.PI*2);
+    ctx.fill();
+  }
 
-  <!-- 爱心 -->
-  <div class="hearts"><span>❤️</span></div>
+  // 太阳
+  let sx=700,sy=70;
+  ctx.beginPath();
+  ctx.arc(sx,sy,35,0,Math.PI*2);
+  ctx.fillStyle='#FFF176';
+  ctx.fill();
+  ctx.shadowColor='#FFF176';
+  ctx.shadowBlur=40;
+  ctx.fill();
+  ctx.shadowBlur=0;
 
-  <div class="title">小时候的我，摸摸长大的自己</div>
-</div>
+  // ── 小孩（左）──
+  let cx=200,cy=330;
+  let armAngle=Math.sin(t*2)*0.3;
 
+  // 身体
+  ctx.fillStyle='#FFF9C4';
+  ctx.fillRect(cx-18,cy+40,36,45);
+
+  // 头
+  ctx.fillStyle='#FFCCBC';
+  ctx.beginPath();
+  ctx.arc(cx,cy+20,23,0,Math.PI*2);
+  ctx.fill();
+
+  // 头发
+  ctx.fillStyle='#5D4037';
+  ctx.beginPath();
+  ctx.arc(cx,cy+8,26,Math.PI,Math.PI*2);
+  ctx.fill();
+
+  // 眼睛
+  ctx.fillStyle='#333';
+  ctx.beginPath();
+  ctx.arc(cx-8,cy+17,3,0,Math.PI*2);
+  ctx.arc(cx+8,cy+17,3,0,Math.PI*2);
+  ctx.fill();
+
+  // 微笑
+  ctx.strokeStyle='#E53935';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.arc(cx,cy+25,8,0.1*Math.PI,0.9*Math.PI);
+  ctx.stroke();
+
+  // 左手（伸向大人）
+  ctx.strokeStyle='#FFCCBC';
+  ctx.lineWidth=12;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(cx+18,cy+55);
+  let reachX=cx+40+Math.sin(t*2)*15;
+  let reachY=cy+50-Math.sin(t*2)*5;
+  ctx.lineTo(reachX,reachY);
+  ctx.stroke();
+
+  // 右手
+  ctx.beginPath();
+  ctx.moveTo(cx-18,cy+55);
+  ctx.lineTo(cx-40,cy+65);
+  ctx.stroke();
+
+  // 腿
+  ctx.strokeStyle='#5D4037';
+  ctx.lineWidth=7;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(cx-8,cy+85);
+  ctx.lineTo(cx-12,cy+105);
+  ctx.moveTo(cx+8,cy+85);
+  ctx.lineTo(cx+12,cy+105);
+  ctx.stroke();
+
+  // ── 大人（右）──
+  let ax=550,ay=320;
+  let adultBob=Math.sin(t)*2;
+
+  // 身体（西装）
+  ctx.fillStyle='#1565C0';
+  ctx.fillRect(ax-22,ay+40+adultBob,44,55);
+  // 领带
+  ctx.fillStyle='#C62828';
+  ctx.fillRect(ax-3,ay+45+adultBob,6,20);
+
+  // 头
+  ctx.fillStyle='#FFE0B2';
+  ctx.beginPath();
+  ctx.arc(ax,ay+18+adultBob,26,0,Math.PI*2);
+  ctx.fill();
+
+  // 头发
+  ctx.fillStyle='#4E342E';
+  ctx.beginPath();
+  ctx.arc(ax,ay+6+adultBob,29,Math.PI,Math.PI*2);
+  ctx.fill();
+
+  // 眼睛
+  ctx.fillStyle='#333';
+  ctx.beginPath();
+  ctx.arc(ax-10,ay+16+adultBob,3,0,Math.PI*2);
+  ctx.arc(ax+10,ay+16+adultBob,3,0,Math.PI*2);
+  ctx.fill();
+
+  // 微笑
+  ctx.strokeStyle='#E53935';
+  ctx.lineWidth=2;
+  ctx.beginPath();
+  ctx.arc(ax,ay+26+adultBob,9,0.1*Math.PI,0.9*Math.PI);
+  ctx.stroke();
+
+  // 手臂（自然垂放）
+  ctx.strokeStyle='#FFE0B2';
+  ctx.lineWidth=12;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(ax+22,ay+50+adultBob);
+  ctx.lineTo(ax+40,ay+75+adultBob);
+  ctx.moveTo(ax-22,ay+50+adultBob);
+  ctx.lineTo(ax-40,ay+75+adultBob);
+  ctx.stroke();
+
+  // 腿
+  ctx.strokeStyle='#37474F';
+  ctx.lineWidth=8;
+  ctx.lineCap='round';
+  ctx.beginPath();
+  ctx.moveTo(ax-10,ay+95+adultBob);
+  ctx.lineTo(ax-14,ay+115+adultBob);
+  ctx.moveTo(ax+10,ay+95+adultBob);
+  ctx.lineTo(ax+14,ay+115+adultBob);
+  ctx.stroke();
+
+  // ── 对话框 ──
+  let bubbleAlpha=Math.sin(t*0.8)>0.3?1:0;
+  if(bubbleAlpha>0){
+    ctx.globalAlpha=Math.min(1,(Math.sin(t*0.8)-0.3)/0.7);
+    ctx.fillStyle='white';
+    ctx.strokeStyle='#ddd';
+    ctx.lineWidth=2;
+    roundRect(ctx,560,80,180,70,20);
+    ctx.fill();ctx.stroke();
+    // 三角
+    ctx.beginPath();
+    ctx.moveTo(560+30,150);
+    ctx.lineTo(560+50,165);
+    ctx.lineTo(560+50,150);
+    ctx.fill();
+    // 文字
+    ctx.fillStyle='#333';
+    ctx.font='bold 24px "Microsoft YaHei",sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('你辛苦了',650,122);
+    ctx.font='18px sans-serif';
+    ctx.fillText('💪',650,148);
+    ctx.globalAlpha=1;
+  }
+
+  // ── 爱心 ──
+  let heartPhase=Math.sin(t*2);
+  if(heartPhase>0.3){
+    ctx.globalAlpha=(heartPhase-0.3)/0.7;
+    ctx.font='28px sans-serif';
+    ctx.textAlign='center';
+    ctx.fillText('❤️',cx+80+Math.sin(t*3)*10,cy-20-Math.sin(t*2)*15);
+    ctx.globalAlpha=1;
+  }
+
+  // ── 底部文字 ──
+  ctx.fillStyle='rgba(255,255,255,0.7)';
+  ctx.font='15px "Microsoft YaHei",sans-serif';
+  ctx.textAlign='center';
+  ctx.fillText('小时候的我，摸摸长大的自己',400,580);
+
+  requestAnimationFrame(draw);
+}
+
+function roundRect(ctx,x,y,w,h,r){
+  ctx.beginPath();
+  ctx.moveTo(x+r,y);ctx.lineTo(x+w-r,y);
+  ctx.quadraticCurveTo(x+w,y,x+w,y+r);
+  ctx.lineTo(x+w,y+h-r);
+  ctx.quadraticCurveTo(x+w,y+h,x+w-r,y+h);
+  ctx.lineTo(x+r,y+h);
+  ctx.quadraticCurveTo(x,y+h,x,y+h-r);
+  ctx.lineTo(x,y+r);
+  ctx.quadraticCurveTo(x,y,x+r,y);
+  ctx.closePath();
+}
+
+draw();
+</script>
 </body>
 </html>
